@@ -32,7 +32,7 @@ interface PageData {
   jobId?: string;
 }
 
-/* ---------------- URL ↔ PAGE MAP ---------------- */
+/* ---------------- ROUTE MAP ---------------- */
 const pathToPage: Record<string, Page> = {
   '/': 'landing',
   '/login': 'login',
@@ -58,22 +58,36 @@ const pageToPath: Record<Page, string> = {
 };
 
 function App() {
-  const { loading: authLoading, user, role } = useAuth();
+  const { loading, user, role } = useAuth();
 
-  const [currentPage, setCurrentPage] = useState<Page>(() => {
-    return pathToPage[window.location.pathname] || 'landing';
-  });
+  const [currentPage, setCurrentPage] = useState<Page>(
+    pathToPage[window.location.pathname] || 'landing'
+  );
   const [pageData, setPageData] = useState<PageData>({});
 
-  /* -------- NAVIGATION (UI SAFE) -------- */
+  /* ---------------- AUTH GUARD ---------------- */
+  const requireAuth = (page: Page): Page => {
+    if (!user && page !== 'login' && page !== 'signup' && page !== 'landing') {
+      return 'login';
+    }
+
+    if (page.startsWith('employer') || page === 'post-job' || page === 'applicants') {
+      return role === 'employer' ? page : 'dashboard';
+    }
+
+    return page;
+  };
+
+  /* ---------------- NAVIGATION ---------------- */
   const handleNavigate = (page: Page, data?: PageData) => {
-    setCurrentPage(page);
+    const safePage = requireAuth(page);
+    setCurrentPage(safePage);
     setPageData(data || {});
-    window.history.pushState({}, '', pageToPath[page]);
+    window.history.pushState({}, '', pageToPath[safePage]);
     window.scrollTo(0, 0);
   };
 
-  /* -------- HANDLE BACK / REFRESH -------- */
+  /* ---------------- BACK / REFRESH ---------------- */
   useEffect(() => {
     const onPopState = () => {
       setCurrentPage(pathToPage[window.location.pathname] || 'landing');
@@ -82,20 +96,9 @@ function App() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  /* -------- AUTO LOGIN REDIRECT -------- */
-  useEffect(() => {
-    if (!authLoading && user) {
-      if (role === 'employer') {
-        handleNavigate('employer-dashboard');
-      } else {
-        handleNavigate('dashboard');
-      }
-    }
-  }, [authLoading, user, role]);
-
-  if (authLoading) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin h-12 w-12 rounded-full border-b-2 border-blue-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading...</p>
@@ -113,15 +116,15 @@ function App() {
       case 'signup':
         return <Signup onNavigate={handleNavigate} />;
       case 'dashboard':
-        return role === 'employer'
-          ? <EmployerDashboard onNavigate={handleNavigate} />
-          : <Dashboard onNavigate={handleNavigate} />;
+        return <Dashboard onNavigate={handleNavigate} />;
       case 'profile':
         return <Profile onNavigate={handleNavigate} />;
       case 'jobs':
         return <JobSearch onNavigate={handleNavigate} />;
       case 'job-detail':
         return <JobDetail jobId={pageData.jobId!} onNavigate={handleNavigate} />;
+      case 'employer-dashboard':
+        return <EmployerDashboard onNavigate={handleNavigate} />;
       case 'post-job':
         return <PostJob onNavigate={handleNavigate} />;
       case 'applicants':
@@ -139,9 +142,7 @@ function App() {
         <Header onNavigate={handleNavigate} currentPage={currentPage} />
       )}
 
-      <main className="flex-grow">
-        {renderPage()}
-      </main>
+      <main className="flex-grow">{renderPage()}</main>
 
       {!hideHeaderFooter && <Footer />}
     </div>

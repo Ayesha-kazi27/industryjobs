@@ -8,7 +8,7 @@ interface ProfileProps {
 }
 
 export default function Profile({ onNavigate }: ProfileProps) {
-  const { profile, updateProfile, user } = useAuth();
+  const { profile, updateProfile, user ,role} = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',

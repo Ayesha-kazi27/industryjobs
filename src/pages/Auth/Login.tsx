@@ -22,11 +22,15 @@ export default function Login({ onNavigate }: LoginProps) {
     try {
       await signIn(email, password);
 
-      if (role === 'employer') {
-        onNavigate('employer-dashboard');
-      } else {
-        onNavigate('dashboard');
-      }
+// wait for auth context to update role
+setTimeout(() => {
+  if (role === 'employer') {
+    onNavigate('employer-dashboard');
+  } else {
+    onNavigate('dashboard');
+  }
+}, 300);
+
     } catch (err: any) {
       setError(err.message || 'Failed to sign in');
     } finally {
