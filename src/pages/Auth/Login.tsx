@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock, AlertCircle } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface LoginProps {
@@ -9,6 +9,7 @@ interface LoginProps {
 export default function Login({ onNavigate }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn, role, resetPassword } = useAuth();
@@ -21,7 +22,6 @@ export default function Login({ onNavigate }: LoginProps) {
     try {
       await signIn(email, password);
 
-      // 🔁 ROLE-BASED REDIRECT (NO UI CHANGE)
       if (role === 'employer') {
         onNavigate('employer-dashboard');
       } else {
@@ -34,7 +34,6 @@ export default function Login({ onNavigate }: LoginProps) {
     }
   };
 
-  // 🔐 FORGOT PASSWORD (REAL LOGIC, SAME UI)
   const handleForgotPassword = async () => {
     if (!email) {
       setError('Please enter your email first');
@@ -48,6 +47,20 @@ export default function Login({ onNavigate }: LoginProps) {
       setError(err.message || 'Failed to send reset email');
     }
   };
+
+  // 🔐 Password strength (simple + lightweight)
+  const getStrength = () => {
+    let score = 0;
+    if (password.length >= 6) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    return score;
+  };
+
+  const strength = getStrength();
+  const strengthText =
+    strength <= 1 ? 'Weak' : strength === 2 ? 'Medium' : 'Strong';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 flex items-center justify-center px-4 py-12">
@@ -66,12 +79,13 @@ export default function Login({ onNavigate }: LoginProps) {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                   type="email"
                   value={email}
@@ -83,21 +97,48 @@ export default function Login({ onNavigate }: LoginProps) {
               </div>
             </div>
 
+            {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   placeholder="••••••••"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
+
+              {password && (
+                <div className="mt-2">
+                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full transition-all ${
+                        strength <= 1
+                          ? 'bg-red-500 w-1/3'
+                          : strength === 2
+                          ? 'bg-yellow-500 w-2/3'
+                          : 'bg-green-500 w-full'
+                      }`}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-600">
+                    Password strength: <span className="font-medium">{strengthText}</span>
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
